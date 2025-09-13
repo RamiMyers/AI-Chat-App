@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 
+/*** Credit to How to Web Dev on YouTube for the UI design ***/
+
 function App() {
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState("")
