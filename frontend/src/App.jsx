@@ -25,7 +25,7 @@ function App() {
     const message = inputValue.trim()
     if (!message) return
 
-    addMessage(message, true)
+    addMessage(message, true)   // user message
     setInputValue("")
     setIsLoading(true)
 
@@ -33,14 +33,34 @@ function App() {
       const url = "http://127.0.0.1:5000/send_message"
       const options = {
         method: "POST",
-        headers: { "Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message })
       }
-      const response = await fetch(url, options)
-      const data = await response.json()
-      const reply = typeof data.content === "string" ? data.content : "🤖 No reply received."
 
-      addMessage(reply, false)
+      const response = await fetch(url, options)
+
+      if (!response.body) {
+        throw new Error("ReadableStream not supported in this browser")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder("utf-8")
+
+      let botReply = ""
+      addMessage("", false)
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        botReply += chunk
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1].content = botReply
+          return updated
+        })
+      }
     } catch (err) {
       addMessage(`❌ Error: ${err.message || "Something went wrong."}`, false)
     } finally {
@@ -79,14 +99,6 @@ function App() {
             ))
           }
 
-          {isLoading &&
-              <div className="p-3 m-2 rounded-2xl max-w-xs bg-gradient-to-r from-emerald-600 to-indigo-600 text-white">
-                <div flex items-center gap-2>
-                  <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full"></div>
-                  Thinking...
-                </div>
-              </div>
-          }
           <div ref={messagesEndRef}></div>
         </div> 
         <div className="flex flex-col sm:flex-row gap-3">
