@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -21,12 +21,16 @@ def send_message():
 
     messages.append({ "role": "user", "content": user_prompt })
 
-    response = openai.chat.completions.create(model=MODEL, messages=messages)
-    assistant_message = response.choices[0].message.content
-
-    messages.append({ "role": "assistant", "content": assistant_message })
-
-    return jsonify({"content": assistant_message}), 200
+    def generate():
+        assistant_message = ""
+        with openai.chat.completions.create(model=MODEL, messages=messages, stream=True) as stream:
+            for event in stream:
+                token = event.choices[0].delta.content or ""
+                assistant_message += token or ""
+                yield token.encode("utf-8")
+            messages.append({ "role": "assistant", "content": assistant_message })
+    
+    return generate(), { "Content-Type": "text/plain" }
 
 
 if __name__ == "__main__":
